@@ -1,0 +1,111 @@
+---
+title: "Causality modeling for Berlin Park Diversity"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+
+The following code loads the data and shows all the columns in the data
+
+```{r}
+# Import libraries and data
+library(AICcmodavg)
+library(Hmisc)
+df <- read.csv("~/Berlin Data - Master.csv")
+
+# Preprocess Data
+colnames(df) <- c('Name','BR',"Size","ID","Total Water","Total Area (1 km)","Water","Total Developed Area (5 km)","Total Area (5 km)", "I5","Total Developed Area (1 km)","Total Area (1 km)", "I1", "HD", "Total Developed Area (200 m)","Total Area (200 m)", "I0.2", "Perimeter", "Edge1", "Edge2")
+processed_df_old <- df[,c(2,3,4,7,10,13,14,17,19,20)]
+names(processed_df_old)
+processed_df_old
+
+```
+
+
+```{r}
+# Transform columns
+processed_df_old[,"I5"] <- log(processed_df_old[,"I5"])
+processed_df_old[,"I1"] <- log(processed_df_old[,"I1"])
+processed_df_old[,"I0.2"] <- log(processed_df_old[,"I0.2"])
+processed_df_old[,"Edge1"] <- log(processed_df_old[,"Edge1"])
+processed_df_old[,"Edge2"] <- log(processed_df_old[,"Edge2"])
+processed_df_old[,"Size"] <- sqrt(processed_df_old[,"Size"])
+processed_df_old[,"ID"] <- sqrt(processed_df_old[,"ID"])
+processed_df_old[,"Water"] <- sqrt(processed_df_old[,"Water"])
+processed_df_old
+
+
+```
+
+```{r}
+# Create correlation table
+cor_table <- cor(processed_df_old)
+cor_p <- rcorr(as.matrix(processed_df_old))
+cor_p
+```
+
+
+
+```{r}
+
+# Run the different linear regression models
+processed_df <- processed_df_old[,!(names(processed_df_old) %in% c("Edge1"))]
+
+D5_ROADS <- lm(BR ~ ID + I5, data = processed_df)
+D0.2_ROADS <- lm(BR ~ ID + I0.2, data = processed_df)
+A_D5 <- lm(BR ~ Size + I5, data = processed_df)
+A_D1 <- lm(BR ~ Size + I1, data = processed_df)
+A_D0.2 <- lm(BR ~ Size + I0.2, data = processed_df)
+D5_HAB <- lm(BR ~ HD + I5, data = processed_df)
+D1_HAB <- lm(BR ~ HD + I1, data = processed_df)
+D0.2_HAB <- lm(BR ~ HD + I0.2, data = processed_df)
+D5 <- lm(BR ~ I5, data = processed_df)
+D1 <- lm(BR ~ I1, data = processed_df)
+D0.2 <- lm(BR ~ I0.2, data = processed_df)
+D5_D1 <- lm(BR ~ I5 + I1, data = processed_df)
+D5_D1_D0.2 <- lm(BR ~ I5 + I1 + I0.2, data = processed_df)
+A <- lm(BR ~ Size, data = processed_df)
+HAB <- lm(BR ~ HD, data = processed_df)
+WATER_A  <- lm(BR ~ Size + Water, data = processed_df)
+WATER_D5_A <-  lm(BR ~ Water + I5 + Size, data = processed_df)
+WATER_D0.2_A <-  lm(BR ~ Water + I0.2 + Size, data = processed_df)
+HAB_ROADS <- lm(BR ~ HD + ID, data = processed_df)
+ROADS <- lm(BR ~ ID, data = processed_df)
+A_ROADS <- lm(BR ~ Size + ID, data = processed_df)
+A_ROADS_D5 <- lm(BR ~ Size + I5 + ID, data = processed_df)
+A_ROADS_D0.2 <- lm(BR ~ Size + I0.2 + ID, data = processed_df)
+ROADS_D1 <- lm(BR ~ I1 + ID, data = processed_df)
+GLOBAL <- lm(BR ~ ., data = processed_df)
+A_HAB <- lm(BR ~ Size + HD, data = processed_df)
+HAB_WATER <- lm(BR ~ Water + HD, data = processed_df)
+WATER <- lm(BR ~ Water, data = processed_df)
+EDGE2 <-lm(BR ~ Edge2, data = processed_df)
+ROAD_WATER <- lm(BR ~ Water + ID, data = processed_df)
+ROAD_EDGE2 <- lm(BR ~ ID + Edge2, data = processed_df)
+EDGE2_HAB <- lm(BR ~ HD + Edge2, data = processed_df)
+EDGE2_A <- lm(BR ~ Size + Edge2, data = processed_df)
+HAB_A_EDGE2 <- lm(BR ~ HD + Size + Edge2, data = processed_df)
+EDGE2_D5 <- lm(BR ~ I5 + Edge2, data = processed_df)
+EDGE2_D1 <- lm(BR ~ I1 + Edge2, data = processed_df)
+EDGE2_D0.2 <- lm(BR ~ I0.2 + Edge2, data = processed_df)
+EDGE_WATER <- lm(BR ~ Water + Edge2, data = processed_df)
+```
+
+
+```{r}
+
+# Return the regression result using AICc
+models <- list(WATER,ROADS_D1, A_ROADS, D5_D1, HAB, D5_ROADS, A_D5, D5_HAB, D5, HAB_ROADS, ROADS, A_ROADS_D5, GLOBAL, A_D1, D1, WATER_D5_A, A, WATER_A, HAB_WATER, A_HAB, EDGE2, D0.2, WATER_D0.2_A, D5_D1_D0.2, A_D0.2, D0.2_ROADS,ROAD_WATER,D1_HAB,D0.2_HAB, ROAD_EDGE2, EDGE2_HAB, EDGE2_A,EDGE_WATER)
+model.names <- c('WATER','ROADS_D1','A_ROADS','D5_D1','HAB','D5_ROADS', 'A_D5', 'D5_HAB', 'D5', 'HAB_ROADS', 'ROADS', 'A_ROADS_D5','GLOBAL','A_D1','D1','WATER_D5_A', 'A', 'WATER_A','HAB_WATER', 'A_HAB', "EDGE2", "D0.2", "WATER_D0.2_A", "D5_D1_D0.2", "A_D0.2", "D0.2_ROADS","ROAD_WATER", "D1_HAB", "D0.2_HAB", "ROAD_EDGE2", "EDGE2_HAB", "EDGE2_A","EDGE_WATER")
+reg_result <- aictab(cand.set = models, modnames = model.names)
+```
+
+
+```{r}
+# Save
+write.table(reg_result)
+write.csv(cor_table,"~/cor_table.csv")
+write.csv(reg_result, "~/reg_result1.csv")
+```
+
